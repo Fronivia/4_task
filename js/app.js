@@ -431,6 +431,7 @@ const sliderContainer = document.getElementById('slider-container');
 const sliderViewPort = document.getElementById('slider-viewport');
 const leftArrow = document.querySelector('.left-arrow');
 const rightArrow = document.querySelector('.right-arrow');
+const basket = document.getElementById('basket');
 // получаем размеры и позиции
 function getCurrentPositions() {
     const viewportWidth = sliderViewPort.clientWidth;
@@ -498,6 +499,14 @@ rightArrow.addEventListener('click', (event) => {
 })
 
 function renderCardItems(cartItems) {
+
+    if (cartItems.length === 0) {
+        console.log('here')
+        basket.style.display = 'none';
+    } else {
+        basket.style.display = 'flex';
+    }
+
     sliderViewPort.innerHTML = cartItems.map(product => {
         return `<article class="product" data-brand="${product.brand}">
                             <div class="product-image-wrapper">
