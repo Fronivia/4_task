@@ -121,11 +121,9 @@ class UI {
             }
             // Assign handlers to product buttons
             button.addEventListener('click', () => {
-                console.log('click')
                 button.textContent = 'in cart';
                 button.disabled = true;
                 const product = products.find(item => {
-                    console.log(item);
                     return item.id === button.dataset.id
                 });
                 const cartItem = {...product, amount: 1};
@@ -160,7 +158,7 @@ class UI {
     addCartItem (cartItem) {
         const article = document.createElement('article');
         article.classList.add('cart-item');
-        article.innerHTML = `<img src="https:${cartItem.images[0]}" alt="${cartItem.title}">
+        article.innerHTML = `<img src="${cartItem.images[0]}" alt="${cartItem.title}">
                             <div>
                                 <h4>${cartItem.title}</h4>
                                 <p>$${cartItem.price}</p>
@@ -185,7 +183,14 @@ class UI {
         this.defineCartTotal();
         this.restoreProductBtn(id);
         Storage.saveCartItems(cartItems);
+
         renderCardItems(cartItems);
+
+        const {offsetRight, viewportWidth, containerWidth, viewPortOffsetLeft} = getCurrentPositions();
+
+        if ( (containerWidth <= viewportWidth) && (offsetRight > 0) ) {
+            sliderViewPort.style.left = `${viewPortOffsetLeft + offsetRight}px`;
+        }
     }
 
     restoreProductBtn (id) {
@@ -441,18 +446,22 @@ function getCurrentPositions() {
     const step = containerWidth + gap;
 
     const availableScroll = containerWidth - viewportWidth;
+    const offsetRight = containerWidth - viewPortOffsetLeft - viewportWidth;
 
     return {
         viewportWidth,
         containerWidth,
         availableScroll,
         viewPortOffsetLeft,
-        step
+        step,
+        offsetRight
     }
 }
 
 // Прослушка событий на кнопки
 leftArrow.addEventListener('click', (event) => {
+
+    sliderViewPort.style.transition = '1s';
 
     const {viewportWidth, containerWidth, viewPortOffsetLeft, step} = getCurrentPositions();
 
@@ -460,22 +469,25 @@ leftArrow.addEventListener('click', (event) => {
         return;
     }
 
-    // Что бы отработала анимация
-    disableButtons();
+    // Что бы отработала анимация отключаем кнопки
 
-    if (viewPortOffsetLeft + step > 0 ) {
+    if (viewPortOffsetLeft + step >= 0 ) {
         sliderViewPort.style.left = `${0}px`;
+        disableButtons('left');
         return;
     }
 
-    if (viewPortOffsetLeft <= 0) {
+    if (viewPortOffsetLeft < 0) {
         sliderViewPort.style.left = `${viewPortOffsetLeft + step}px`;
+        disableButtons();
         return;
     }
 })
 
 // Прослушка событий на кнопки
 rightArrow.addEventListener('click', (event) => {
+
+    sliderViewPort.style.transition = '1s';
 
     const {viewportWidth, containerWidth, viewPortOffsetLeft, step, availableScroll} = getCurrentPositions();
 
@@ -484,15 +496,16 @@ rightArrow.addEventListener('click', (event) => {
     }
 
     // Что бы отработала анимация
-   disableButtons();
 
-    if (availableScroll > viewPortOffsetLeft - step) {
+    if (availableScroll >= viewPortOffsetLeft - step) {
         sliderViewPort.style.left = `${availableScroll}px`;
+        disableButtons('right');
         return
     }
 
     if (availableScroll < viewPortOffsetLeft) {
         sliderViewPort.style.left = `${viewPortOffsetLeft - step}px`;
+        disableButtons();
         return;
     }
 
@@ -501,7 +514,6 @@ rightArrow.addEventListener('click', (event) => {
 function renderCardItems(cartItems) {
 
     if (cartItems.length === 0) {
-        console.log('here')
         basket.style.display = 'none';
     } else {
         basket.style.display = 'flex';
@@ -526,16 +538,77 @@ function renderCardItems(cartItems) {
                             <h4>$${product.price}</h4>
                         </article>`;
     }).join('');
+
+    const {availableScroll, viewPortOffsetLeft, containerWidth, viewportWidth} = getCurrentPositions();
+
+    // отключает кнопки при рендере
+
+    if (viewPortOffsetLeft === 0) {
+        leftArrow.disabled = true;
+    }
+
+    if (availableScroll < viewPortOffsetLeft) {
+        rightArrow.disabled = false;
+    }
+
+    if (containerWidth >= viewportWidth) {
+        leftArrow.disabled = true;
+        rightArrow.disabled = true;
+    }
 }
 
 
-function disableButtons() {
+function disableButtons(type) {
     rightArrow.disabled = true;
     leftArrow.disabled = true;
+
+    if (type === 'left') {
+        setTimeout(() => {
+            rightArrow.disabled = false;
+        }, 1000);
+
+        return;
+    }
+
+    if (type === 'right') {
+        setTimeout(() => {
+            leftArrow.disabled = false;
+        }, 1000);
+
+        return;
+    }
 
     setTimeout(() => {
         leftArrow.disabled = false;
         rightArrow.disabled = false;
-        console.log('ОТРАБОТАЛО')
     }, 1000);
+}
+
+// ресайзер отвечает за отключение кнопок при ресайзе и передвижение карточек
+window.addEventListener('resize', resizeHandler);
+
+function resizeHandler(event) {
+
+    const {viewportWidth, containerWidth, viewPortOffsetLeft, availableScroll, step, offsetRight} = getCurrentPositions();
+
+    if (viewportWidth > containerWidth) {
+        // Если есть отступ справа, то убираем его
+        if (offsetRight > 0) {
+            sliderViewPort.style.transition = '0s';
+            sliderViewPort.style.left = `${viewPortOffsetLeft + offsetRight}px`;
+        }
+
+        // смотрит когда надо включать, когда отключать кнопки
+        if (availableScroll < viewPortOffsetLeft) {
+            rightArrow.disabled = false;
+        } else {
+            rightArrow.disabled = true;
+        }
+
+        if (viewPortOffsetLeft === 0) {
+            leftArrow.disabled = true;
+        } else {
+            leftArrow.disabled = false;
+        }
+    }
 }
